@@ -1,0 +1,189 @@
+---
+title: "Projet_final"
+output: html_document
+date: "2024-02-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(tidytext)
+library(tm)
+library(text2vec)
+library(Matrix)
+library(tokenizers)
+library(topicmodels)
+library(pROC)
+library(e1071)
+library(caret)
+library(MASS)
+library(textstem)
+```
+
+
+```{r}
+library(readr)
+train_essays <- read_csv("llm-detect-ai-generated-text/train_essays.csv",show_col_types = FALSE)
+train_prompts <- read_csv("llm-detect-ai-generated-text/train_prompts.csv",show_col_types = FALSE)
+test_essays <- read_csv("llm-detect-ai-generated-text/test_essays.csv",show_col_types = FALSE)
+sample_submission <- read_csv("llm-detect-ai-generated-text/sample_submission.csv",show_col_types = FALSE)
+```
+
+```{r}
+head(train_essays)
+```
+```{r}
+summary(train_essays)
+```
+
+```{r}
+train_essays$length <- str_length(train_essays$text)
+ggplot(train_essays, aes(x = length)) + geom_histogram(bins = 30)
+train_essays$length <- NULL
+```
+
+```{r}
+train_essays %>% 
+  count(generated) %>% 
+  ggplot(aes(x = generated, y = n)) + 
+  geom_bar(stat = "identity")
+```
+
+```{r}
+head(test_essays)
+```
+
+```{r}
+summary(test_essays)
+```
+```{r}
+test_essays$length <- str_length(test_essays$text)
+ggplot(test_essays, aes(x = length)) + geom_histogram(bins = 30)
+test_essays$length <- NULL
+```
+
+```{r}
+head(train_prompts)
+```
+
+```{r}
+summary(train_prompts)
+```
+
+```{r}
+train_prompts %>% 
+  count(prompt_name) %>% 
+  ggplot(aes(x = prompt_name, y = n)) + 
+  geom_bar(stat = "identity")
+```
+
+```{r}
+head(sample_submission)
+```
+
+```{r}
+summary(sample_submission)
+```
+```{r}
+library(dplyr)
+
+train_essays <- train_essays %>%
+  mutate(number_of_sentences = str_count(text, "[.!?]"))
+```
+
+
+```{r}
+calculer_longueur_moyenne_phrases <- function(texte) {
+  # Séparer le texte en phrases
+  phrases <- unlist(str_split(texte, "[.!?]"))
+  
+  # Supprimer les espaces vides pour ne pas compter les "phrases" vides après la séparation
+  phrases <- phrases[phrases != ""]
+  
+  # Calculer la longueur de chaque phrase
+  longueurs <- nchar(trimws(phrases)) # `trimws` enlève les espaces blancs au début et à la fin
+  
+  # Retourner la longueur moyenne
+  if (length(longueurs) > 0) {
+    return(mean(longueurs))
+  } else {
+    return(NA) # si pas de phrase alors NA
+  }
+}
+
+train_essays <- train_essays %>%
+  mutate(longueur_moyenne_phrases = sapply(text, calculer_longueur_moyenne_phrases))
+
+```
+
+```{r}
+library(quanteda)
+library(quanteda.textstats)
+
+# Création d'un corpus à partir de la colonne de texte
+corpus_essays <- corpus(train_essays$text)
+
+# Calcul des scores de lisibilité
+readability_scores <- textstat_readability(corpus_essays, measure = "Flesch")
+
+# Affichage des scores
+print(readability_scores)
+
+# Pour ajouter les scores au dataset original
+train_essays$Flesch_Score_lisibilité <- readability_scores$Flesch
+
+```
+
+```{r}
+# Nettoyage du texte
+corpus_essays <- tokens(corpus_essays) %>%
+  tokens_remove(pattern = stopwords("en"), padding = FALSE) %>%
+  tokens_remove(pattern = "[\\p{P}\\p{N}]+", valuetype = "regex") %>%
+  tokens_tolower() %>%
+  tokens_ngrams(n = 2)
+
+# Création d'une DFM
+dfm_essays <- dfm(corpus_essays)
+
+# Trouver les n-grammes les plus fréquents
+top_ngrams <- topfeatures(dfm_essays, n = 10)
+
+# Calcul du nombre total de n-grammes uniques par document
+train_essays$ngrams_count <- ntoken(dfm_essays)
+```
+
+```{r}
+library(quanteda)
+# Création de tokens et calcul de TTR pour unigrammes (Diversité des n-grammes)
+tokens_essays <- tokens(train_essays$text, what = "word")
+dfm_essays <- dfm(tokens_essays)
+train_essays$TTR <- ntype(dfm_essays) / ntoken(dfm_essays)
+```
+
+```{r}
+library(quanteda)
+
+bigrams_tokens <- tokens_ngrams(tokens_essays, n = 2)
+dfm_bigrams <- dfm(bigrams_tokens)
+
+# Identification des bigrammes les plus fréquents dans tout le corpus
+top_bigrams <- names(top_ngrams)
+
+# Calcul de la fréquence de chaque top bigramme dans chaque document
+for (bigram in top_bigrams) {
+  # Création d'un nom de colonne valide pour le dataframe
+  col_name <- paste("freq", gsub(" ", "_", bigram), sep = "_")
+  
+  # Sélection du dfm_bigrams pour le bigramme actuel et somme des fréquences
+  selected_dfm <- dfm_select(dfm_bigrams, pattern = bigram)
+  
+  # Ajout de la somme des fréquences du bigramme au dataframe
+  train_essays[[col_name]] <- rowSums(as.matrix(selected_dfm))
+}
+```
