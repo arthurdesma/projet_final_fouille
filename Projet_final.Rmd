@@ -44,15 +44,22 @@ summary(train_essays)
 
 ```{r}
 train_essays$length <- str_length(train_essays$text)
-ggplot(train_essays, aes(x = length)) + geom_histogram(bins = 30)
+# Création de l'histogramme avec ggplot2
+ggplot(train_essays, aes(x = length)) + 
+  geom_histogram(bins = 30, fill = 'blue') +
+  labs(title = "Distribution des longueurs des textes", x = "Longueur", y = "Fréquence")
+
+# Suppression de la colonne 'length' du dataframe train_essays
 train_essays$length <- NULL
+
 ```
 
 ```{r}
 train_essays %>% 
   count(generated) %>% 
   ggplot(aes(x = generated, y = n)) + 
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity",fill = c("blue", "red"))+
+  labs(title = "Distribution des valeurs de la colonne 'generated'", x = "Valeur de 'generated'", y = "Fréquence")
 ```
 
 ```{r}
@@ -64,7 +71,7 @@ summary(test_essays)
 ```
 ```{r}
 test_essays$length <- str_length(test_essays$text)
-ggplot(test_essays, aes(x = length)) + geom_histogram(bins = 30)
+ggplot(test_essays, aes(x = length)) + geom_histogram(bins = 30,fill = 'blue')
 test_essays$length <- NULL
 ```
 
@@ -80,7 +87,8 @@ summary(train_prompts)
 train_prompts %>% 
   count(prompt_name) %>% 
   ggplot(aes(x = prompt_name, y = n)) + 
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity",fill = c("blue", "red"))+
+  labs(title = "Nombre d'occurrences par catégorie de prompt")
 ```
 
 ```{r}
@@ -164,6 +172,7 @@ library(quanteda)
 tokens_essays <- tokens(train_essays$text, what = "word")
 dfm_essays <- dfm(tokens_essays)
 train_essays$TTR <- ntype(dfm_essays) / ntoken(dfm_essays)
+print(head(train_essays$TTR))
 ```
 
 ```{r}
@@ -186,4 +195,80 @@ for (bigram in top_bigrams) {
   # Ajout de la somme des fréquences du bigramme au dataframe
   train_essays[[col_name]] <- rowSums(as.matrix(selected_dfm))
 }
+```
+
+```{r}
+# Calcul des poids TF-IDF
+tfidf <- dfm_tfidf(dfm_essays)
+
+# Convertir la matrice TF-IDF en format matrice
+tfidf_matrix <- as.matrix(tfidf)
+# Affichage d'un extrait de la matrice TF-IDF
+print(tfidf_matrix[1:5, 1:10])
+
+```
+
+Avant de réduire la dimensionnalité de l’espace, il faut d'abord préciser la nature de la relation : linéaire ou non linéaire afin d'utiliser l'approche convenable, pour se faire analysant la relation entre les différents features.
+
+```{r}
+library(ggplot2)
+
+# Création d'un graphique de dispersion pour chaque paire de caractéristiques
+ggplot(train_essays, aes(x = longueur_moyenne_phrases, y = Flesch_Score_lisibilité)) +
+  geom_point() +
+  labs(x = "Longueur moyenne des phrases", y = "Score de lisibilité de Flesch") +
+  ggtitle("Longueur moyenne des phrases vs Score de lisibilité de Flesch")
+
+ggplot(train_essays, aes(x = longueur_moyenne_phrases, y = TTR)) +
+  geom_point() +
+  labs(x = "Longueur moyenne des phrases", y = "TTR (Taux de Type-Token)") +
+  ggtitle("Longueur moyenne des phrases vs TTR")
+
+ggplot(train_essays, aes(x = Flesch_Score_lisibilité, y = TTR)) +
+  geom_point() +
+  labs(x = "Score de lisibilité de Flesch", y = "TTR (Taux de Type-Token)") +
+  ggtitle("Score de lisibilité de Flesch vs TTR")
+
+
+```
+
+
+```{r}
+# Extrait de la matrice de corrélation
+correlation_matrix <- cor(train_essays[, c("longueur_moyenne_phrases", "Flesch_Score_lisibilité", "TTR")])
+
+# Affichage des coefficients de corrélation individuels
+print(correlation_matrix)
+```
+
+-La corrélation entre la 'longueur moyenne des phrases' et 'le score de lisibilité de Flesch' est faible à modérée et négative, indiquant qu'une augmentation de la longueur moyenne des phrases est généralement associée à une diminution du score de lisibilité de Flesch, et vice versa. Cependant, cette corrélation n'est pas très forte, ce qui suggère que d'autres facteurs peuvent également influencer cette relation.
+-Il y a une corrélation négative faible entre la 'longueur moyenne des phrases' et le 'TTR' , indiquant qu'une augmentation de la longueur moyenne des phrases est associée à une légère diminution du TTR, et vice versa. Cependant, cette corrélation n'est pas très forte.
+-Entre le 'score de lisibilité de Flesch' et le 'TTR', il n'y a pratiquement aucune corrélation linéaire. Cela indique que ces deux caractéristiques sont essentiellement indépendantes l'une de l'autre et que leur variation n'est pas liée de manière linéaire.
+
+```{r}
+# Calculer la matrice de corrélation
+correlation_matrix <- cor(train_essays[, c("longueur_moyenne_phrases", "Flesch_Score_lisibilité", "TTR")])
+
+# Visualiser la matrice de corrélation sous forme de heatmap
+heatmap(correlation_matrix, 
+        Colv = NA, Rowv = NA,
+        col = colorRampPalette(c("blue", "white", "red"))(100),
+        main = "Heatmap de la corrélation entre les caractéristiques",
+        xlab = "Caractéristiques", ylab = "Caractéristiques")
+
+```
+La visualisation de la matrice de corrélation sous forme de heatmap confirme nos analyses par rapport à la relation entre les caractéristiques.
+En conclusion en peut dire que la relation entre les caractéristiques est non linéaires.
+
+```{r}
+library(e1071) 
+# Séparation des caractéristiques et de la variable cible
+X <- train_essays[, c("longueur_moyenne_phrases", "Flesch_Score_lisibilité", "TTR", paste0("freq_", top_bigrams))]
+Y <- train_essays$generated
+
+# Entraînement du modèle SVM avec un noyau gaussien (rbf)
+model_svm <- svm(X, Y, kernel = "radial", type = "C-classification")
+
+# Afficher un résumé du modèle
+summary(model_svm)
 ```
