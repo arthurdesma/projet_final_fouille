@@ -9,6 +9,28 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+# Installer les packages nécessaires
+# install.packages("readr")
+# install.packages("dplyr")
+# install.packages("ggplot2")
+# install.packages("stringr")
+# install.packages("tidytext")
+# install.packages("tm")
+# install.packages("text2vec")
+# install.packages("Matrix")
+# install.packages("tokenizers")
+# install.packages("topicmodels")
+# install.packages("pROC")
+# install.packages("e1071")
+# install.packages("caret")
+# install.packages("MASS")
+# install.packages("textstem")
+# install.packages("ROSE")
+ install.packages("quanteda")
+ install.packages("quanteda.textstats")
+ install.packages("stopwords")
+
+# Chargement des packages nécessaires
 library(readr)
 library(dplyr)
 library(ggplot2)
@@ -24,11 +46,14 @@ library(e1071)
 library(caret)
 library(MASS)
 library(textstem)
+library(ROSE)
+
+# Suppression de toutes les variables en mémoire
+rm(list = ls())
 ```
 
-
 ```{r}
-library(readr)
+# Chargement des fichiers csv
 train_essays <- read_csv("llm-detect-ai-generated-text/train_essays.csv",show_col_types = FALSE)
 train_prompts <- read_csv("llm-detect-ai-generated-text/train_prompts.csv",show_col_types = FALSE)
 test_essays <- read_csv("llm-detect-ai-generated-text/test_essays.csv",show_col_types = FALSE)
@@ -36,35 +61,53 @@ sample_submission <- read_csv("llm-detect-ai-generated-text/sample_submission.cs
 ```
 
 ```{r}
+# Vérifie les valeurs uniques de la colonne 'generated'
+unique_values <- unique(train_essays$generated)
+print(unique_values)
+
+# Affiche le début du fichier train_essays
 head(train_essays)
 ```
+
 ```{r}
+# Résume le dataset train_essays
 summary(train_essays)
 ```
 
 ```{r}
 train_essays$length <- str_length(train_essays$text)
-ggplot(train_essays, aes(x = length)) + geom_histogram(bins = 30)
+# Création de l'histogramme avec ggplot2
+ggplot(train_essays, aes(x = length)) + 
+  geom_histogram(bins = 30, fill = 'blue') +
+  labs(title = "Distribution des longueurs des textes", x = "Longueur", y = "Fréquence")
+
+# Suppression de la colonne 'length' du dataframe train_essays
 train_essays$length <- NULL
+
 ```
 
 ```{r}
+# Création histogramme de la Distribution des valeurs de la colonne 'generated'
 train_essays %>% 
   count(generated) %>% 
   ggplot(aes(x = generated, y = n)) + 
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity",fill = c("blue", "red"))+
+  labs(title = "Distribution des valeurs de la colonne 'generated'", x = "Valeur de 'generated'", y = "Fréquence")
 ```
 
 ```{r}
+# Première ligne de tes_essays
 head(test_essays)
 ```
 
 ```{r}
+# Résumé de test_essays
 summary(test_essays)
 ```
+
 ```{r}
 test_essays$length <- str_length(test_essays$text)
-ggplot(test_essays, aes(x = length)) + geom_histogram(bins = 30)
+ggplot(test_essays, aes(x = length)) + geom_histogram(bins = 30,fill = 'blue')
 test_essays$length <- NULL
 ```
 
@@ -80,7 +123,8 @@ summary(train_prompts)
 train_prompts %>% 
   count(prompt_name) %>% 
   ggplot(aes(x = prompt_name, y = n)) + 
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity",fill = c("blue", "red"))+
+  labs(title = "Nombre d'occurrences par catégorie de prompt")
 ```
 
 ```{r}
@@ -90,26 +134,25 @@ head(sample_submission)
 ```{r}
 summary(sample_submission)
 ```
+
 ```{r}
-library(dplyr)
 
 train_essays <- train_essays %>%
   mutate(number_of_sentences = str_count(text, "[.!?]"))
 ```
 
-
 ```{r}
 calculer_longueur_moyenne_phrases <- function(texte) {
-  # Séparer le texte en phrases
+  # Sépare le texte en phrases
   phrases <- unlist(str_split(texte, "[.!?]"))
   
-  # Supprimer les espaces vides pour ne pas compter les "phrases" vides après la séparation
+  # Supprime les espaces vides pour ne pas compter les "phrases" vides après la séparation
   phrases <- phrases[phrases != ""]
   
-  # Calculer la longueur de chaque phrase
+  # Calcule la longueur de chaque phrase
   longueurs <- nchar(trimws(phrases)) # `trimws` enlève les espaces blancs au début et à la fin
   
-  # Retourner la longueur moyenne
+  # Retourne la longueur moyenne
   if (length(longueurs) > 0) {
     return(mean(longueurs))
   } else {
@@ -164,6 +207,7 @@ library(quanteda)
 tokens_essays <- tokens(train_essays$text, what = "word")
 dfm_essays <- dfm(tokens_essays)
 train_essays$TTR <- ntype(dfm_essays) / ntoken(dfm_essays)
+print(head(train_essays$TTR))
 ```
 
 ```{r}
@@ -186,4 +230,249 @@ for (bigram in top_bigrams) {
   # Ajout de la somme des fréquences du bigramme au dataframe
   train_essays[[col_name]] <- rowSums(as.matrix(selected_dfm))
 }
+```
+
+```{r}
+# Calcul des poids TF-IDF
+tfidf <- dfm_tfidf(dfm_essays)
+
+# Convertir la matrice TF-IDF en format matrice
+tfidf_matrix <- as.matrix(tfidf)
+# Affichage d'un extrait de la matrice TF-IDF
+print(tfidf_matrix[1:5, 1:10])
+
+```
+
+Avant de réduire la dimensionnalité de l'espace, il faut d'abord préciser la nature de la relation : linéaire ou non linéaire afin d'utiliser l'approche convenable, pour se faire analysant la relation entre les différents features.
+
+```{r}
+library(ggplot2)
+
+# Création d'un graphique de dispersion pour chaque paire de caractéristiques
+ggplot(train_essays, aes(x = longueur_moyenne_phrases, y = Flesch_Score_lisibilité)) +
+  geom_point() +
+  labs(x = "Longueur moyenne des phrases", y = "Score de lisibilité de Flesch") +
+  ggtitle("Longueur moyenne des phrases vs Score de lisibilité de Flesch")
+
+ggplot(train_essays, aes(x = longueur_moyenne_phrases, y = TTR)) +
+  geom_point() +
+  labs(x = "Longueur moyenne des phrases", y = "TTR (Taux de Type-Token)") +
+  ggtitle("Longueur moyenne des phrases vs TTR")
+
+ggplot(train_essays, aes(x = Flesch_Score_lisibilité, y = TTR)) +
+  geom_point() +
+  labs(x = "Score de lisibilité de Flesch", y = "TTR (Taux de Type-Token)") +
+  ggtitle("Score de lisibilité de Flesch vs TTR")
+
+
+```
+
+```{r}
+# Extrait de la matrice de corrélation
+correlation_matrix <- cor(train_essays[, c("longueur_moyenne_phrases", "Flesch_Score_lisibilité", "TTR")])
+
+# Affichage des coefficients de corrélation individuels
+print(correlation_matrix)
+```
+
+-La corrélation entre la 'longueur moyenne des phrases' et 'le score de lisibilité de Flesch' est faible à modérée et négative, indiquant qu'une augmentation de la longueur moyenne des phrases est généralement associée à une diminution du score de lisibilité de Flesch, et vice versa. Cependant, cette corrélation n'est pas très forte, ce qui suggère que d'autres facteurs peuvent également influencer cette relation. -Il y a une corrélation négative faible entre la 'longueur moyenne des phrases' et le 'TTR' , indiquant qu'une augmentation de la longueur moyenne des phrases est associée à une légère diminution du TTR, et vice versa. Cependant, cette corrélation n'est pas très forte. -Entre le 'score de lisibilité de Flesch' et le 'TTR', il n'y a pratiquement aucune corrélation linéaire. Cela indique que ces deux caractéristiques sont essentiellement indépendantes l'une de l'autre et que leur variation n'est pas liée de manière linéaire.
+
+```{r}
+# Calculer la matrice de corrélation
+correlation_matrix <- cor(train_essays[, c("longueur_moyenne_phrases", "Flesch_Score_lisibilité", "TTR")])
+
+# Visualiser la matrice de corrélation sous forme de heatmap
+heatmap(correlation_matrix, 
+        Colv = NA, Rowv = NA,
+        col = colorRampPalette(c("blue", "white", "red"))(100),
+        main = "Heatmap de la corrélation entre les caractéristiques")
+
+```
+
+La visualisation de la matrice de corrélation sous forme de heatmap confirme nos analyses par rapport à la relation entre les caractéristiques. En conclusion en peut dire que la relation entre les caractéristiques est non linéaires.
+
+```{r}
+library(kernlab)
+
+X <- train_essays[, c("longueur_moyenne_phrases", "Flesch_Score_lisibilité", "TTR", paste0("freq_", top_bigrams))]
+
+# Application de Kernel PCA
+kpca_result <- kpca(~., data = as.data.frame(X), kernel = "rbfdot", features = 2)
+
+# Extraction des composantes principales
+X_kpca <- as.matrix(rotated(kpca_result))
+
+# Maintenant, X_kpca contient les données projetées dans un espace de dimension réduite
+```
+
+```{r}
+library(e1071)
+
+# Supposons que Y contient vos étiquettes de classe
+Y <- train_essays$generated
+
+# Entraînement du classifieur bayésien naïf avec les données réduites
+model_bayes <- naiveBayes(X_kpca, Y)
+
+# Affichage du modèle
+print(model_bayes)
+```
+
+```{r}
+# Installation des packages nécessaires si vous ne les avez pas déjà
+# install.packages(c("e1071", "caret", "pROC", "Metrics"))
+
+library(e1071)  # Pour le classifieur bayésien naïf
+library(caret)   # Pour la validation croisée et les métriques d'évaluation
+library(pROC)    # Pour l'analyse ROC-AUC
+library(Metrics) # Pour le score Brier
+```
+
+
+```{r}
+set.seed(2024)  # Pour la reproductibilité
+train_control <- trainControl(method = "cv", number = 10, classProbs = TRUE, summaryFunction = twoClassSummary, savePredictions = TRUE)
+```
+
+
+```{r}
+
+# Convertir X_kpca en dataframe si ce n'est pas déjà le cas
+X_kpca_df <- as.data.frame(X_kpca)
+
+# Entraînement du modèle avec validation croisée
+model <- train(x = X_kpca_df, y = Y, method = "nb", trControl = train_control, metric = "ROC")
+
+```
+
+```{r}
+# Affichage des résultats
+print(model)
+
+```
+
+
+```{r}
+# Exemple de calcul de l'AUC ROC
+roc_result <- roc(response = model$pred$obs, predictor = as.numeric(model$pred$NB))
+auc(roc_result)
+
+# Calcul du score Brier
+brier_score <- brier(model$pred$obs, model$pred$NB)
+
+```
+
+
+
+```{r}
+# Configuration de la validation croisée stratifiée k-fold
+set.seed(123)
+
+train_control <- trainControl(
+  method = "cv", 
+  number = 10, 
+  summaryFunction = twoClassSummary, 
+  classProbs = TRUE, # Important pour le ROC AUC et le score Brier
+  savePredictions = "final")
+```
+
+```{r}
+
+set.seed(123) # Pour la reproductibilité
+
+# Calcule la taille souhaitée pour la classe majoritaire
+minority_size <- sum(train_essays$generated == 1)
+desired_majority_size <- minority_size * 3
+
+# Pour obtenir les indices de la classe majoritaire
+majority_indices <- which(train_essays$generated == 0)
+
+# Échantillonne aléatoirement les indices pour obtenir la taille souhaitée
+set.seed(123) 
+down_sampled_indices <- sample(majority_indices, desired_majority_size, replace = FALSE)
+
+# Combine les instances sous-échantillonnées avec la classe minoritaire
+balanced_data <- rbind(
+  train_essays[train_essays$generated == 1, ],
+  train_essays[down_sampled_indices, ]
+)
+
+# Vérifie l'équilibre des classes
+table(balanced_data$generated)
+
+# Attention : ici on restreint nos données à un jeu très réduit car train_essays a sa colonne generated fortement désiquillibrée ! Notre code est applicable pour n'importe quelle autre dataset, ce réequillibrage est alors nécessaire pour obtenir des résultats pertinants 
+```
+
+```{r}
+# On s'assure que la variable cible ici 'generated' soit un facteur
+balanced_data$generated <- as.factor(balanced_data$generated)
+
+# Renomme les niveaux de la variable 'generated' pour qu'ils soient des noms de variables valides
+balanced_data$generated <- factor(balanced_data$generated, levels = c("0", "1"), labels = c("Generated0", "Generated1"))
+
+
+nb_model_cv <- train(generated ~ ., 
+                     data = balanced_data, 
+                     method = "naive_bayes", 
+                     trControl = train_control,
+                     metric = "Accuracy") 
+# Résumé du modèle avec validation croisée
+print(nb_model_cv)
+
+```
+
+```{r}
+# Évaluation des performances
+predictions <- predict(nb_model_cv, balanced_data)
+confusionMatrix(predictions, balanced_data$generated)
+```
+
+```{r}
+# Calcul des métriques d'évaluation
+precision <- posPredValue(predictions, balanced_data$generated)
+recall <- sensitivity(predictions, balanced_data$generated)
+f1_score <- (2 * precision * recall) / (precision + recall)
+
+# Calcul de l'AUC-ROC
+prob_predictions <- predict(nb_model_cv, balanced_data, type = "prob")
+roc_curve <- roc(response = balanced_data$generated, predictor = prob_predictions[,2])
+auc(roc_curve)
+
+# Conversion de la variable cible en valeurs binaires (0 et 1)
+actual_binaries <- ifelse(balanced_data$generated == "Generated1", 1, 0)
+
+# Calcul manuel du score de Brier
+brier_score_manual <- mean((prob_predictions[, 2] - actual_binaries) ^ 2)
+
+# Affichage des métriques
+print(precision)
+print(recall)
+print(f1_score)
+print(roc_curve)
+# Affichage du score de Brier manuel
+print(brier_score_manual)
+```
+
+```{r}
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
 ```
