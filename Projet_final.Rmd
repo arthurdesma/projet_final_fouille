@@ -26,9 +26,9 @@ knitr::opts_chunk$set(echo = TRUE)
 # install.packages("MASS")
 # install.packages("textstem")
 # install.packages("ROSE")
- install.packages("quanteda")
- install.packages("quanteda.textstats")
- install.packages("stopwords")
+# install.packages("quanteda")
+# install.packages("quanteda.textstats")
+# install.packages("stopwords")
 
 # Chargement des packages nécessaires
 library(readr)
@@ -46,7 +46,6 @@ library(e1071)
 library(caret)
 library(MASS)
 library(textstem)
-library(ROSE)
 
 # Suppression de toutes les variables en mémoire
 rm(list = ls())
@@ -301,178 +300,57 @@ kpca_result <- kpca(~., data = as.data.frame(X), kernel = "rbfdot", features = 2
 
 # Extraction des composantes principales
 X_kpca <- as.matrix(rotated(kpca_result))
-
-# Maintenant, X_kpca contient les données projetées dans un espace de dimension réduite
 ```
 
-```{r}
-library(e1071)
 
-# Supposons que Y contient vos étiquettes de classe
+```{r}
 Y <- train_essays$generated
 
-# Entraînement du classifieur bayésien naïf avec les données réduites
-model_bayes <- naiveBayes(X_kpca, Y)
+data <- data.frame(X_kpca, Generated = Y)
 
-# Affichage du modèle
+set.seed(2024)
+
+# Créez une partition pour diviser les données en ensembles d'entraînement et de test
+trainIndex <- createDataPartition(data$Generated, p = .8, 
+                                  list = FALSE, 
+                                  times = 1)
+
+# Division les données en ensembles d'entraînement et de test
+trainData <- data[trainIndex, ]
+testData <- data[-trainIndex, ]
+
+# Separation les caractéristiques et la variable cible dans les ensembles d'entraînement et de test
+X_train <- trainData[, -ncol(trainData)]
+Y_train <- trainData$Generated
+
+X_test <- testData[, -ncol(testData)]
+Y_test <- testData$Generated
+
+# Entrainement du model
+model_bayes <- naiveBayes(X_train, Y_train)
+
 print(model_bayes)
 ```
 
 ```{r}
-# Installation des packages nécessaires si vous ne les avez pas déjà
-# install.packages(c("e1071", "caret", "pROC", "Metrics"))
+predictions <- predict(model_bayes, X_test)
 
-library(e1071)  # Pour le classifieur bayésien naïf
-library(caret)   # Pour la validation croisée et les métriques d'évaluation
-library(pROC)    # Pour l'analyse ROC-AUC
-library(Metrics) # Pour le score Brier
-```
+# Convertion des prédictions et des vraies valeurs en facteurs
+Y_test_factor <- factor(Y_test)
+predictions_factor <- factor(predictions, levels = levels(Y_test_factor))
 
+# Calcule de la matrice de confusion et les métriques
+confMat <- confusionMatrix(predictions_factor, Y_test_factor)
 
-```{r}
-set.seed(2024)  # Pour la reproductibilité
-train_control <- trainControl(method = "cv", number = 10, classProbs = TRUE, summaryFunction = twoClassSummary, savePredictions = TRUE)
-```
-
-
-```{r}
-
-# Convertir X_kpca en dataframe si ce n'est pas déjà le cas
-X_kpca_df <- as.data.frame(X_kpca)
-
-# Entraînement du modèle avec validation croisée
-model <- train(x = X_kpca_df, y = Y, method = "nb", trControl = train_control, metric = "ROC")
-
-```
-
-```{r}
-# Affichage des résultats
-print(model)
-
-```
-
-
-```{r}
-# Exemple de calcul de l'AUC ROC
-roc_result <- roc(response = model$pred$obs, predictor = as.numeric(model$pred$NB))
-auc(roc_result)
-
-# Calcul du score Brier
-brier_score <- brier(model$pred$obs, model$pred$NB)
-
-```
-
-
-
-```{r}
-# Configuration de la validation croisée stratifiée k-fold
-set.seed(123)
-
-train_control <- trainControl(
-  method = "cv", 
-  number = 10, 
-  summaryFunction = twoClassSummary, 
-  classProbs = TRUE, # Important pour le ROC AUC et le score Brier
-  savePredictions = "final")
-```
-
-```{r}
-
-set.seed(123) # Pour la reproductibilité
-
-# Calcule la taille souhaitée pour la classe majoritaire
-minority_size <- sum(train_essays$generated == 1)
-desired_majority_size <- minority_size * 3
-
-# Pour obtenir les indices de la classe majoritaire
-majority_indices <- which(train_essays$generated == 0)
-
-# Échantillonne aléatoirement les indices pour obtenir la taille souhaitée
-set.seed(123) 
-down_sampled_indices <- sample(majority_indices, desired_majority_size, replace = FALSE)
-
-# Combine les instances sous-échantillonnées avec la classe minoritaire
-balanced_data <- rbind(
-  train_essays[train_essays$generated == 1, ],
-  train_essays[down_sampled_indices, ]
-)
-
-# Vérifie l'équilibre des classes
-table(balanced_data$generated)
-
-# Attention : ici on restreint nos données à un jeu très réduit car train_essays a sa colonne generated fortement désiquillibrée ! Notre code est applicable pour n'importe quelle autre dataset, ce réequillibrage est alors nécessaire pour obtenir des résultats pertinants 
-```
-
-```{r}
-# On s'assure que la variable cible ici 'generated' soit un facteur
-balanced_data$generated <- as.factor(balanced_data$generated)
-
-# Renomme les niveaux de la variable 'generated' pour qu'ils soient des noms de variables valides
-balanced_data$generated <- factor(balanced_data$generated, levels = c("0", "1"), labels = c("Generated0", "Generated1"))
-
-
-nb_model_cv <- train(generated ~ ., 
-                     data = balanced_data, 
-                     method = "naive_bayes", 
-                     trControl = train_control,
-                     metric = "Accuracy") 
-# Résumé du modèle avec validation croisée
-print(nb_model_cv)
-
-```
-
-```{r}
-# Évaluation des performances
-predictions <- predict(nb_model_cv, balanced_data)
-confusionMatrix(predictions, balanced_data$generated)
-```
-
-```{r}
-# Calcul des métriques d'évaluation
-precision <- posPredValue(predictions, balanced_data$generated)
-recall <- sensitivity(predictions, balanced_data$generated)
-f1_score <- (2 * precision * recall) / (precision + recall)
-
-# Calcul de l'AUC-ROC
-prob_predictions <- predict(nb_model_cv, balanced_data, type = "prob")
-roc_curve <- roc(response = balanced_data$generated, predictor = prob_predictions[,2])
-auc(roc_curve)
-
-# Conversion de la variable cible en valeurs binaires (0 et 1)
-actual_binaries <- ifelse(balanced_data$generated == "Generated1", 1, 0)
-
-# Calcul manuel du score de Brier
-brier_score_manual <- mean((prob_predictions[, 2] - actual_binaries) ^ 2)
+# Extraction des métriques à partir de la matrice de confusion
+accuracy <- confMat$overall['Accuracy']
+precision <- confMat$byClass['Pos Pred Value']
+recall <- confMat$byClass['Sensitivity']
+f1_score <- 2 * (precision * recall) / (precision + recall)
 
 # Affichage des métriques
-print(precision)
-print(recall)
-print(f1_score)
-print(roc_curve)
-# Affichage du score de Brier manuel
-print(brier_score_manual)
-```
-
-```{r}
-
-```
-
-```{r}
-
-
-```
-
-```{r}
-
-
-
-```
-
-```{r}
-
-
-```
-
-```{r}
-
+cat("Précision :", accuracy, "\n")
+cat("Précision (Pos Pred Value) :", precision, "\n")
+cat("Rappel (Sensitivity) :", recall, "\n")
+cat("Score F1 :", f1_score, "\n")
 ```
