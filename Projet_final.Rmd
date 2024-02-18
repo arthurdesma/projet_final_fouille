@@ -234,7 +234,7 @@ corpus_essays <- corpus(train_essays$text)
 readability_scores <- textstat_readability(corpus_essays, measure = "Flesch")
 
 # Affichage des scores
-print(readability_scores)
+#print(readability_scores)
 
 # Pour ajouter les scores au dataset original
 train_essays$Flesch_Score_lisibilité <- readability_scores$Flesch
@@ -332,11 +332,11 @@ correlation_matrix <- cor(train_essays[, c("longueur_moyenne_phrases", "Flesch_S
 print(correlation_matrix)
 ```
 
-- La corrélation entre la 'longueur moyenne des phrases' et 'le score de lisibilité de Flesch' est faible à modérée et négative, indiquant qu'une augmentation de la longueur moyenne des phrases est généralement associée à une diminution du score de lisibilité de Flesch, et vice versa. Cependant, cette corrélation n'est pas très forte, ce qui suggère que d'autres facteurs peuvent également influencer cette relation. 
+-   La corrélation entre la 'longueur moyenne des phrases' et 'le score de lisibilité de Flesch' est faible à modérée et négative, indiquant qu'une augmentation de la longueur moyenne des phrases est généralement associée à une diminution du score de lisibilité de Flesch, et vice versa. Cependant, cette corrélation n'est pas très forte, ce qui suggère que d'autres facteurs peuvent également influencer cette relation.
 
-- Il y a une corrélation négative faible entre la 'longueur moyenne des phrases' et le 'TTR' , indiquant qu'une augmentation de la longueur moyenne des phrases est associée à une légère diminution du TTR, et vice versa. Cependant, cette corrélation n'est pas très forte. 
+-   Il y a une corrélation négative faible entre la 'longueur moyenne des phrases' et le 'TTR' , indiquant qu'une augmentation de la longueur moyenne des phrases est associée à une légère diminution du TTR, et vice versa. Cependant, cette corrélation n'est pas très forte.
 
-- Entre le 'score de lisibilité de Flesch' et le 'TTR', il n'y a pratiquement aucune corrélation linéaire. Cela indique que ces deux caractéristiques sont essentiellement indépendantes l'une de l'autre et que leur variation n'est pas liée de manière linéaire.
+-   Entre le 'score de lisibilité de Flesch' et le 'TTR', il n'y a pratiquement aucune corrélation linéaire. Cela indique que ces deux caractéristiques sont essentiellement indépendantes l'une de l'autre et que leur variation n'est pas liée de manière linéaire.
 
 ```{r}
 # Calculer la matrice de corrélation
@@ -434,15 +434,15 @@ Dans ce projet sur l’exploration de la détection de texte généré par l'IA 
 
 Voici donc nos quelques pistes pour de futurs travaux :
 
-- Amélioration du modèle global
+-   Amélioration du modèle global
 
 Soit, le modèle actuel pourrait bénéficier d'un raffinement supplémentaire, notamment en affinant les hyperparamètres ou en explorant des architectures de modèles plus complexes. On pense qu’avec plus de temps on aurait pu creuser plus dans ce sens dans un premier temps. Par exemple, l'intégration de réseaux de neurones profonds ou de techniques d'apprentissage en profondeur (comme BERT/DistilBERT, Gemini ou encore GPT) pourrait offrir des améliorations significatives dans la capacité à distinguer entre les textes générés.
 
-- Exploration de fonctionnalités alternatives
+-   Exploration de fonctionnalités alternatives
 
 Bien que nous ayons extrait un ensemble robuste de caractéristiques linguistiques et stylométriques, l'univers des fonctionnalités potentielles reste assez vaste. En effet, de nouvelles fonctionnalités, telles que la cohérence sémantique ou les motifs de ponctuation spécifiques, pourraient révéler des indicateurs plus subtils de la génération de texte par IA.
 
-- Techniques avancées d'apprentissage automatique
+-   Techniques avancées d'apprentissage automatique
 
 Notons en dernier point que l'application de techniques avancées, comme Monte Carlo par chaîne de Markov (MCMC) ou l'inférence variationnelle, peuvent entre autres offrir des perspectives plus qu'intéressantes sur l'estimation des paramètres et la généralisation du modèle.
 
