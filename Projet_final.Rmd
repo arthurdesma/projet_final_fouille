@@ -80,8 +80,6 @@ library(textstem)
 rm(list = ls())
 ```
 
-
-
 ```{r}
 # Chargement des fichiers csv
 train_essays <- read_csv("llm-detect-ai-generated-text/train_essays.csv",show_col_types = FALSE)
@@ -164,6 +162,7 @@ head(sample_submission)
 ```{r}
 summary(sample_submission)
 ```
+
 Extraction de caractéristiques (Feature Extraction):
 
 Passons maintenant au Feature Extraction ou extraction de caractéristiques. L'extraction de caractéristiques est une partie centrale dans le processus d'analyse textuelle, car elle permet en somme de transformer le texte brut en un ensemble de variables que les algorithmes de machine learning peuvent utiliser pour la modélisation.
@@ -193,6 +192,7 @@ Préparation pour l'analyse de modèles : Deuxième point, les scores TF-IDF pr�
 Compatibilité avec les modèles de classification : Troisième et dernier point, les vecteurs TF-IDF sont souvent utilisés en entrée pour les modèles de classification textuelle, car ils fournissent une représentation numérique significative du texte qui peut être facilement interprétée par les algorithmes d'apprentissage automatique tout simplement.
 
 Ainsi, l'ensemble de ces caractéristiques ont été extraites dans le but de capturer à la fois la structure et le style des textes, éléments déterminants dans la distinction entre les textes générés par IA et les écrits humains et de faire alors la différence entre elles.
+
 ```{r}
 
 train_essays <- train_essays %>%
@@ -348,6 +348,8 @@ heatmap(correlation_matrix,
 
 La visualisation de la matrice de corrélation sous forme de heatmap confirme nos analyses par rapport à la relation entre les caractéristiques. En conclusion en peut dire que la relation entre les caractéristiques est non linéaires.
 
+L'Analyse des Facteurs Discriminants (AFD) est une méthode statistique utilisée pour découvrir et analyser les variations significatives entre différents groupes d'observations dans un ensemble de données multidimensionnelles. Son objectif principal est de projeter ces données dans un espace de dimensions réduites tout en accentuant les différences entre les groupes et en réduisant les variations au sein de chaque groupe. Dans le code présenté, une étape préalable d'Analyse en Composantes Principales Kernel (Kernel PCA) est réalisée pour réduire la dimensionnalité des données tout en prenant en compte les relations complexes entre les variables. On utilise Kernel PCA car les relations entre les variables sont non linéaires.
+
 ```{r}
 library(kernlab)
 
@@ -359,6 +361,8 @@ kpca_result <- kpca(~., data = as.data.frame(X), kernel = "rbfdot", features = 2
 # Extraction des composantes principales
 X_kpca <- as.matrix(rotated(kpca_result))
 ```
+
+La classification bayésienne, ici illustrée à travers l'utilisation du classificateur naïf de Bayes, est une méthode statistique efficace pour prédire la catégorie d'un nouvel échantillon en se basant sur la probabilité conditionnelle. Le code fourni montre comment préparer les données, diviser les ensembles d'entraînement et de test, puis entraîner le modèle avec les caractéristiques disponibles. Les probabilités a priori et conditionnelles calculées fournissent des informations cruciales sur la distribution des classes et la relation entre les caractéristiques et la variable cible, facilitant ainsi la prise de décision en matière de classification.
 
 ```{r}
 Y <- train_essays$generated
@@ -411,7 +415,18 @@ cat("Précision (Pos Pred Value) :", precision, "\n")
 cat("Rappel (Sensitivity) :", recall, "\n")
 cat("Score F1 :", f1_score, "\n")
 ```
-Dans ce projet sur l’exploration de la détection de texte généré par l'IA à l'aide de techniques bayésiennes et d’AFD, nous avons posé les bases d'une méthodologie pertinente à nos yeux comme énoncé lors de notre conclusion. Cependant, comme tout domaine de recherche en évolution assez exponentielle, il reste des portes ouvertes d'amélioration. 
+
+Avec une précision de 0.9927273 et un rappel de 1, le modèle a montré une performance exceptionnelle dans la classification des échantillons. Le score F1 de 0.9963504 indique une bonne harmonisation entre la précision et le rappel. En résumé, le modèle a démontré une capacité remarquable à prédire avec précision les catégories des échantillons.Cependant, il est également important de vérifier si le modèle souffre de surajustement (overfitting).
+
+En conclusion, cette analyse a permis de mettre en lumière plusieurs points importants. Tout d'abord, l'utilisation de la classification bayésienne, en particulier du classificateur naïf de Bayes, a montré une performance impressionnante avec une précision de 99,27% et un score F1 de 0,996. Ces résultats indiquent que le modèle est capable de classifier efficacement les données avec une très faible marge d'erreur.
+
+De plus, l'analyse des facteurs discriminants a permis de réduire la dimensionnalité des données tout en mettant en évidence les différences significatives entre les groupes. Cette approche a fourni des informations précieuses sur les caractéristiques discriminantes dans l'ensemble de données.
+
+Enfin, une évaluation minutieuse du modèle a été réalisée pour détecter tout surajustement potentiel. Bien que les résultats soient très prometteurs, il est recommandé de poursuivre l'analyse en utilisant des techniques de validation croisée et de régularisation pour garantir la robustesse et la généralisabilité du modèle.
+
+En résumé, cette analyse a démontré l'efficacité des méthodes de classification bayésienne et d'analyse des facteurs discriminants dans la compréhension et la prédiction des données. Ces résultats fournissent une base solide pour de futures recherches et applications dans des domaines variés tels que la science des données, la classification de texte, et bien d'autres.
+
+Dans ce projet sur l’exploration de la détection de texte généré par l'IA à l'aide de techniques bayésiennes et d’AFD, nous avons posé les bases d'une méthodologie pertinente à nos yeux comme énoncé lors de notre conclusion. Cependant, comme tout domaine de recherche en évolution assez exponentielle, il reste des portes ouvertes d'amélioration.
 
 Voici donc nos quelques pistes pour de futurs travaux :
 
@@ -425,24 +440,20 @@ Bien que nous ayons extrait un ensemble robuste de caractéristiques linguistiqu
 
 Techniques Avancées d'Apprentissage Automatique
 
-Notons en dernier point que l'application de techniques avancées, comme Monte Carlo par chaîne de Markov (MCMC) ou l'inférence variationnelle, peuvent entre autres offrir des perspectives plus qu'intéressantes sur l'estimation des paramètres et la généralisation du modèle. 
-
+Notons en dernier point que l'application de techniques avancées, comme Monte Carlo par chaîne de Markov (MCMC) ou l'inférence variationnelle, peuvent entre autres offrir des perspectives plus qu'intéressantes sur l'estimation des paramètres et la généralisation du modèle.
 
 Ainsi, ces différentes approches pourraient permettre une compréhension plus nuancée des probabilités sous-jacentes et améliorer la précision de la détection.
-
 
 Passons maintenant à la question ouverte posée par notre professeur pour clôturer notre travail de réflexion.
 
 Problématique : Détection et Prédiction du Texte Généré par IA
 
-Questionnement :  “Pourrions-nous aujourd'hui ou d'ici quelques années détecter/prédire un texte généré par une IA ?”
+Questionnement : “Pourrions-nous aujourd'hui ou d'ici quelques années détecter/prédire un texte généré par une IA ?”
 
-La question est ici de savoir si nous pouvons, aujourd'hui ou dans un avenir proche, détecter ou prédire efficacement un texte généré par IA étant au cœur de nos recherches. En effet, il est bon de dire que les progrès réalisés jusqu'à présent sont très prometteurs, indiquant que, avec les bonnes techniques et un entraînement adéquat, il est possible de distinguer de manière fiable le texte généré par l'IA de celui écrit par des humains. 
-Cependant, comme la technologie d'IA évolue rapidement, les modèles de génération de texte deviennent de plus en plus sophistiqués, ce qui rend la tâche de détection plus complexe.
+La question est ici de savoir si nous pouvons, aujourd'hui ou dans un avenir proche, détecter ou prédire efficacement un texte généré par IA étant au cœur de nos recherches. En effet, il est bon de dire que les progrès réalisés jusqu'à présent sont très prometteurs, indiquant que, avec les bonnes techniques et un entraînement adéquat, il est possible de distinguer de manière fiable le texte généré par l'IA de celui écrit par des humains. Cependant, comme la technologie d'IA évolue rapidement, les modèles de génération de texte deviennent de plus en plus sophistiqués, ce qui rend la tâche de détection plus complexe.
 
-De ce fait, à mesure que les algorithmes d'IA s'améliorent, notre capacité à les détecter doit également évoluer. Cela signifie donc non seulement améliorer les modèles existants mais aussi rester à l'affût des nouvelles avancées en IA pour anticiper et s'adapter à de nouvelles méthodes de génération de texte. 
+De ce fait, à mesure que les algorithmes d'IA s'améliorent, notre capacité à les détecter doit également évoluer. Cela signifie donc non seulement améliorer les modèles existants mais aussi rester à l'affût des nouvelles avancées en IA pour anticiper et s'adapter à de nouvelles méthodes de génération de texte.
 
 En fin de compte, la réponse à la question posée dépendra de notre capacité à innover et à adapter nos méthodes de détection au rythme des progrès en IA. Le défi est significatif, ne l'oublions pas, mais les avancées dans le domaine de la fouille de texte et de l'apprentissage automatique fournissent une base solide sur laquelle nous pouvons continuer à construire et pourquoi pas qui sait un jour arriver à faire l’impossible…
 
 Ainsi, notre réponse est assez nuancé là-dessus.
-
