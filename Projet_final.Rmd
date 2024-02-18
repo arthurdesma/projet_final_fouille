@@ -169,19 +169,19 @@ Passons maintenant au Feature Extraction ou extraction de caractéristiques. L'e
 
 En effet, dans notre analyse, nous avons extrait plusieurs caractéristiques linguistiques et stylométriques pour capter la complexité et la nuance des textes étudiés. Voici les caractéristiques que nous avons considérées :
 
-Caractéristiques Linguistiques :
+Caractéristiques linguistiques :
 
 Nombre de phrases (number_of_sentences): Cette caractéristique compte le nombre total de phrases dans chaque texte, en utilisant la ponctuation comme indicateur de la fin d'une phrase. Cela peut donc donner une indication sur la complexité et la structure du texte.
 
 Longueur moyenne des phrases (longueur_moyenne_phrases): Elle représente la longueur moyenne des phrases dans un texte, ce qui peut être révélateur du style d'écriture de l'auteur.
 
-Score de lisibilité de Flesch (Flesch_Score_lisibilité): Un score qui évalue la facilité de lecture du texte. Ainsi, les scores plus élevés indiquent un texte plus facile à lire et vice-versa. A noter que le plus souvent, et on a pu le remarquer de notre côté au cours de nos analyses, les phrases n’étaient pas seulement facile à lire entre guillemets mais aussi plus courtes et un langage moins complexe y était employé.
+Score de lisibilité de Flesch (Flesch_Score_lisibilité): Un score qui évalue la facilité de lecture du texte. Ainsi, les scores plus élevés indiquent un texte plus facile à lire et vice-versa. A noter que le plus souvent, et on a pu le remarquer de notre côté au cours de nos analyses, les phrases n’étaient pas seulement "faciles à lire" mais aussi plus courtes et un langage moins complexe y était employé.
 
-Caractéristiques Stylométriques :
+Caractéristiques stylométriques :
 
 Diversité lexicale (TTR - Taux de Type-Token): Elle mesure la richesse du vocabulaire en calculant le rapport entre le nombre total de mots uniques (types) et le nombre total de mots dans le texte (tokens). Fréquence des bigrammes : Nous avons examiné la fréquence des paires de mots consécutifs (bigrammes) pour saisir des motifs de langage spécifiques qui pourraient être caractéristiques de textes générés par l’IA ou non.
 
-Méthode de Vectorisation :
+Méthode de vectorisation :
 
 Pour la vectorisation des textes, nous avons choisi l'approche TF-IDF (Term Frequency-Inverse Document Frequency). Cette méthode sert à évaluer l'importance d'un mot dans un document par rapport à un ensemble de documents (corpus). Le TF-IDF augmente proportionnellement au nombre de fois qu'un mot apparaît dans le document, mais est compensé par le nombre de documents dans le corpus qui contiennent le mot. En somme, cela permet de réduire l'impact des mots fréquemment utilisés dans les textes qui ont moins de pertinence thématique. De ce fait, nous avons utilisé cette méthode pour les raisons suivantes :
 
@@ -332,7 +332,11 @@ correlation_matrix <- cor(train_essays[, c("longueur_moyenne_phrases", "Flesch_S
 print(correlation_matrix)
 ```
 
--La corrélation entre la 'longueur moyenne des phrases' et 'le score de lisibilité de Flesch' est faible à modérée et négative, indiquant qu'une augmentation de la longueur moyenne des phrases est généralement associée à une diminution du score de lisibilité de Flesch, et vice versa. Cependant, cette corrélation n'est pas très forte, ce qui suggère que d'autres facteurs peuvent également influencer cette relation. -Il y a une corrélation négative faible entre la 'longueur moyenne des phrases' et le 'TTR' , indiquant qu'une augmentation de la longueur moyenne des phrases est associée à une légère diminution du TTR, et vice versa. Cependant, cette corrélation n'est pas très forte. -Entre le 'score de lisibilité de Flesch' et le 'TTR', il n'y a pratiquement aucune corrélation linéaire. Cela indique que ces deux caractéristiques sont essentiellement indépendantes l'une de l'autre et que leur variation n'est pas liée de manière linéaire.
+- La corrélation entre la 'longueur moyenne des phrases' et 'le score de lisibilité de Flesch' est faible à modérée et négative, indiquant qu'une augmentation de la longueur moyenne des phrases est généralement associée à une diminution du score de lisibilité de Flesch, et vice versa. Cependant, cette corrélation n'est pas très forte, ce qui suggère que d'autres facteurs peuvent également influencer cette relation. 
+
+- Il y a une corrélation négative faible entre la 'longueur moyenne des phrases' et le 'TTR' , indiquant qu'une augmentation de la longueur moyenne des phrases est associée à une légère diminution du TTR, et vice versa. Cependant, cette corrélation n'est pas très forte. 
+
+- Entre le 'score de lisibilité de Flesch' et le 'TTR', il n'y a pratiquement aucune corrélation linéaire. Cela indique que ces deux caractéristiques sont essentiellement indépendantes l'une de l'autre et que leur variation n'est pas liée de manière linéaire.
 
 ```{r}
 # Calculer la matrice de corrélation
@@ -346,7 +350,7 @@ heatmap(correlation_matrix,
 
 ```
 
-La visualisation de la matrice de corrélation sous forme de heatmap confirme nos analyses par rapport à la relation entre les caractéristiques. En conclusion en peut dire que la relation entre les caractéristiques est non linéaires.
+La visualisation de la matrice de corrélation sous forme de heatmap confirme nos analyses par rapport à la relation entre les caractéristiques. En conclusion, en peut dire que la relation entre les caractéristiques est non linéaire.
 
 L'Analyse des Facteurs Discriminants (AFD) est une méthode statistique utilisée pour découvrir et analyser les variations significatives entre différents groupes d'observations dans un ensemble de données multidimensionnelles. Son objectif principal est de projeter ces données dans un espace de dimensions réduites tout en accentuant les différences entre les groupes et en réduisant les variations au sein de chaque groupe. Dans le code présenté, une étape préalable d'Analyse en Composantes Principales Kernel (Kernel PCA) est réalisée pour réduire la dimensionnalité des données tout en prenant en compte les relations complexes entre les variables. On utilise Kernel PCA car les relations entre les variables sont non linéaires.
 
@@ -362,7 +366,7 @@ kpca_result <- kpca(~., data = as.data.frame(X), kernel = "rbfdot", features = 2
 X_kpca <- as.matrix(rotated(kpca_result))
 ```
 
-La classification bayésienne, ici illustrée à travers l'utilisation du classificateur naïf de Bayes, est une méthode statistique efficace pour prédire la catégorie d'un nouvel échantillon en se basant sur la probabilité conditionnelle. Le code fourni montre comment préparer les données, diviser les ensembles d'entraînement et de test, puis entraîner le modèle avec les caractéristiques disponibles. Les probabilités a priori et conditionnelles calculées fournissent des informations cruciales sur la distribution des classes et la relation entre les caractéristiques et la variable cible, facilitant ainsi la prise de décision en matière de classification.
+La classification bayésienne, ici illustrée à travers l'utilisation du classificateur naïf de Bayes, est une méthode statistique efficace pour prédire la catégorie d'un nouvel échantillon en se basant sur la probabilité conditionnelle. Le code fourni montre comment préparer les données, diviser les ensembles d'entraînement et de test, puis entraîner le modèle avec les caractéristiques disponibles. Les probabilités à priori et conditionnelles calculées fournissent des informations cruciales sur la distribution des classes et la relation entre les caractéristiques et la variable cible, facilitant ainsi la prise de décision en matière de classification.
 
 ```{r}
 Y <- train_essays$generated
@@ -416,7 +420,7 @@ cat("Rappel (Sensitivity) :", recall, "\n")
 cat("Score F1 :", f1_score, "\n")
 ```
 
-Avec une précision de 0.9927273 et un rappel de 1, le modèle a montré une performance exceptionnelle dans la classification des échantillons. Le score F1 de 0.9963504 indique une bonne harmonisation entre la précision et le rappel. En résumé, le modèle a démontré une capacité remarquable à prédire avec précision les catégories des échantillons.Cependant, il est également important de vérifier si le modèle souffre de surajustement (overfitting).
+Avec une précision de 0.9927273 et un rappel de 1, le modèle a montré une performance exceptionnelle dans la classification des échantillons. Le score F1 de 0.9963504 indique une bonne harmonisation entre la précision et le rappel. En résumé, le modèle a démontré une capacité remarquable à prédire avec précision les catégories des échantillons. Cependant, il peut être intéressant de vérifier si le modèle souffre de surajustement (overfitting).
 
 En conclusion, cette analyse a permis de mettre en lumière plusieurs points importants. Tout d'abord, l'utilisation de la classification bayésienne, en particulier du classificateur naïf de Bayes, a montré une performance impressionnante avec une précision de 99,27% et un score F1 de 0,996. Ces résultats indiquent que le modèle est capable de classifier efficacement les données avec une très faible marge d'erreur.
 
@@ -430,15 +434,15 @@ Dans ce projet sur l’exploration de la détection de texte généré par l'IA 
 
 Voici donc nos quelques pistes pour de futurs travaux :
 
-Amélioration du modèle global
+- Amélioration du modèle global
 
 Soit, le modèle actuel pourrait bénéficier d'un raffinement supplémentaire, notamment en affinant les hyperparamètres ou en explorant des architectures de modèles plus complexes. On pense qu’avec plus de temps on aurait pu creuser plus dans ce sens dans un premier temps. Par exemple, l'intégration de réseaux de neurones profonds ou de techniques d'apprentissage en profondeur (comme BERT/DistilBERT, Gemini ou encore GPT) pourrait offrir des améliorations significatives dans la capacité à distinguer entre les textes générés.
 
-Exploration de Fonctionnalités Alternatives
+- Exploration de fonctionnalités alternatives
 
 Bien que nous ayons extrait un ensemble robuste de caractéristiques linguistiques et stylométriques, l'univers des fonctionnalités potentielles reste assez vaste. En effet, de nouvelles fonctionnalités, telles que la cohérence sémantique ou les motifs de ponctuation spécifiques, pourraient révéler des indicateurs plus subtils de la génération de texte par IA.
 
-Techniques Avancées d'Apprentissage Automatique
+- Techniques avancées d'apprentissage automatique
 
 Notons en dernier point que l'application de techniques avancées, comme Monte Carlo par chaîne de Markov (MCMC) ou l'inférence variationnelle, peuvent entre autres offrir des perspectives plus qu'intéressantes sur l'estimation des paramètres et la généralisation du modèle.
 
@@ -456,4 +460,4 @@ De ce fait, à mesure que les algorithmes d'IA s'améliorent, notre capacité à
 
 En fin de compte, la réponse à la question posée dépendra de notre capacité à innover et à adapter nos méthodes de détection au rythme des progrès en IA. Le défi est significatif, ne l'oublions pas, mais les avancées dans le domaine de la fouille de texte et de l'apprentissage automatique fournissent une base solide sur laquelle nous pouvons continuer à construire et pourquoi pas qui sait un jour arriver à faire l’impossible…
 
-Ainsi, notre réponse est assez nuancé là-dessus.
+Ainsi, notre réponse est assez nuancée là-dessus.
